@@ -16,11 +16,11 @@ clean:
 
 test:
 	@echo "Running tests"
-	@for pkg in $(PKGS) ; do \
+	for pkg in $(PKGS) ; do \
 		golint $$pkg ; \
 	done
-	@go vet $(PKGS)
-	@go test -cover -v $(PKGS)
+	go vet $(PKGS)
+	go test -cover -v $(PKGS)
 
 package: clean build
 	@echo "Creating package for $(GOOS) $(GOARCH)"

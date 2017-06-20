@@ -22,6 +22,11 @@ type Backend struct {
 
 // NewBackend creates a new Backend.
 func NewBackend(server, username, password string) (*Backend, error) {
+	return NewBackend(server, username, "")
+}
+
+// NewBackend creates a new Backend.
+func NewBackend(server, username, password string, cafile string) (*Backend, error) {
 	b := Backend{
 		txPacketChan: make(chan gw.TXPacketBytes),
 		gateways:     make(map[lorawan.EUI64]struct{}),
@@ -33,6 +38,13 @@ func NewBackend(server, username, password string) (*Backend, error) {
 	opts.SetPassword(password)
 	opts.SetOnConnectHandler(b.onConnected)
 	opts.SetConnectionLostHandler(b.onConnectionLost)
+	
+	if len(cafile) != 0 {
+		tlsconfig := NewTLSConfig(cafile)
+		if(tlsconfig != nil) {
+			opts.SetClientID("ssl-client").SetTLSConfig(tlsconfig)
+		}
+	}
 
 	log.WithField("server", server).Info("backend: connecting to mqtt broker")
 	b.conn = mqtt.NewClient(opts)
@@ -41,6 +53,25 @@ func NewBackend(server, username, password string) (*Backend, error) {
 	}
 
 	return &b, nil
+}
+
+func NewTLSConfig(cafile string) (*tls.Config, error) {
+	// Import trusted certificates from CAfile.pem.
+	
+	cert, err := ioutil.ReadFile(cafile)
+	if err != nil {
+		log.Errorf("backend: couldn't load cafile", err)
+		return nil, err
+	}
+	
+	certpool := x509.NewCertPool()
+	certpool.AppendCertsFromPEM(cert)
+	
+	// Create tls.Config with desired tls properties
+	return &tls.Config{
+		// RootCAs = certs used to verify server cert.
+		RootCAs: certpool,
+	}, nil;
 }
 
 // Close closes the backend.
